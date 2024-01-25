@@ -1,28 +1,48 @@
 function Validator(options) {
   let selectorRules = {};
 
+  //
+  function getParent(element, selector) {
+    while (element.parentElement) {
+      if (element.parentElement.matches(selector)) {
+        return element.parentElement;
+      }
+      element = element.parentElement;
+    }
+  }
+
   // hàm kiểm tra và thực hiện validate
   let validate = (inputElement, rule) => {
     // gọi tới thẻ span của khung đang nhập liệu
-    let errorElement = inputElement.parentElement.querySelector(
-      options.errorSelector,
-    );
+    let errorElement = getParent(
+      inputElement,
+      options.formGroupSelector,
+    ).querySelector(options.errorSelector);
     let errorMessage;
 
     //  lấy ra các rules của selector
     let rules = selectorRules[rule.selector];
-    // lặp và từng rule& kiểm tra
+    // lặp và từng rule & kiểm tra
     // nếu có lỗi thì dừng việc kiểm tra
-    for (let i = 0; i < rules.length; ++i) {
-      errorMessage = rules[i](inputElement.value);
-      if (errorMessage) break;
+    // Nếu là radio hoặc checkbox, sử dụng giá trị của input được chọn
+    if (inputElement.type === "radio" || inputElement.type === "checkbox") {
+      errorMessage = rules[0](
+        formElement.querySelector(rule.selector + ":checked").value,
+      );
+    } else {
+      // Trường hợp khác, sử dụng giá trị của input
+      errorMessage = rules[0](inputElement.value);
     }
     if (errorMessage) {
       errorElement.innerText = errorMessage;
-      inputElement.parentElement.classList.add("invalid");
+      getParent(inputElement, options.formGroupSelector).classList.add(
+        "invalid",
+      );
     } else {
       errorElement.innerText = "";
-      inputElement.parentElement.classList.remove("invalid");
+      getParent(inputElement, options.formGroupSelector).classList.remove(
+        "invalid",
+      );
     }
     return errorMessage;
   };
@@ -35,22 +55,25 @@ function Validator(options) {
     formElement.onsubmit = function (e) {
       e.preventDefault();
       let isFormValid = true;
-      options.rules.forEach(function (rule) {
-        let inputElement = formElement.querySelector(rule.selector);
-        let isValid = validate(inputElement, rule);
-        if (isValid) {
-          isFormValid = false;
-        }
-      });
+
+      // // kiểm tra tất cả các điều kiện xem có thõa mãn không
+      // options.rules.forEach(function (rule) {
+      //   let inputElements = formElement.querySelectorAll(rule.selector);
+      //   Array.from(inputElements).forEach((inputElement) => {
+      //     let isValid = validate(inputElement, rule);
+      //     if (isValid) {
+      //       isFormValid = false;
+      //     }
+      //   });
+      // });
 
       if (isFormValid) {
         // trường hợp submit với javascript
         if (typeof options.onsubmit === "function") {
-          let enableInputs = formElement.querySelectorAll(
-            "[name]:not([disable])",
-          );
+          let enableInputs = formElement.querySelectorAll("[name]");
           let formValues = Array.from(enableInputs).reduce((values, input) => {
-            return (values[input.name] = input.value) && values;
+            values[input.name] = input.value;
+            return values;
           }, {});
           options.onsubmit({ formValues });
         }
@@ -62,19 +85,22 @@ function Validator(options) {
     };
     // kiểm tra từng rule và xử lý ( lắng nghe sự kiện blur, input,...)
     options.rules.forEach(function (rule) {
+      let inputElement = formElement.querySelector(rule.selector);
+      // gọi tới thẻ span của khung đang nhập liệu
+      let errorElement = getParent(
+        inputElement,
+        options.formGroupSelector,
+      ).querySelector(options.errorSelector);
+
       // lưu lại các rule cho mõi input
       if (Array.isArray(selectorRules[rule.selector])) {
         selectorRules[rule.selector].push(rule.test);
       } else {
         selectorRules[rule.selector] = [rule.test];
       }
-      let inputElement = formElement.querySelector(rule.selector);
-      // gọi tới thẻ span của khung đang nhập liệu
-      let errorElement = inputElement.parentElement.querySelector(
-        options.errorSelector,
-      );
       // kiểm tra xem người dùng nhập đúnh không
       let errorMessage = rule.test(inputElement.value);
+
       // xử lý hiển thị nội dung lỗi lên thẻ span ở ngay dưới khung nhập liệu
       if (inputElement) {
         // xử lý khi người dùng blur khỏi khung nhập
@@ -84,7 +110,9 @@ function Validator(options) {
         //xử lý khi người dùng nhập input
         inputElement.oninput = () => {
           errorElement.innerText = "";
-          inputElement.parentElement.classList.remove("invalid");
+          getParent(inputElement, options.formGroupSelector).classList.remove(
+            "invalid",
+          );
         };
       }
     });
@@ -97,7 +125,7 @@ Validator.isRequired = function (selector, message = "") {
   return {
     selector: selector,
     test: function (value = "") {
-      return value.trim() ? undefined : message || "Vui lòng nhập trường này!!";
+      return value ? undefined : message || "Vui lòng nhập trường này!!";
     },
   };
 };
@@ -135,6 +163,7 @@ Validator.isConfirmed = function (selector, getConfirmValue, message = "") {
 
 Validator({
   form: "#form-1",
+  formGroupSelector: ".form-group",
   errorSelector: ".form-message",
   rules: [
     Validator.isRequired("#fullname", "Vui lòng nhập họ tên đầy đủ!!!"),
@@ -143,6 +172,7 @@ Validator({
     Validator.isRequired("#password"),
     Validator.minLength("#password", 6),
     Validator.isRequired("#password_confirmation"),
+    Validator.isRequired(`input[name="gender"]`),
     Validator.isConfirmed("#password_confirmation", function () {
       return document.querySelector("#form-1 #password").value;
     }),
