@@ -22,20 +22,21 @@ function Validator(options) {
 
     //  lấy ra các rules của selector
     let rules = selectorRules[rule.selector];
-    // lặp và từng rule& kiểm tra
+    // lặp và từng rule & kiểm tra
     // nếu có lỗi thì dừng việc kiểm tra
     for (let i = 0; i < rules.length; ++i) {
       switch (inputElement.type) {
-        case "radia":
+        case "radio":
         case "checkbox":
-          errorMessage = rule[i](
+          errorMessage = rules[i](
             formElement.querySelector(rule.selector + ":checked"),
           );
           break;
+
         default:
-          break;
+          errorMessage = rules[i](inputElement.value);
       }
-      errorMessage = rules[i](inputElement.value);
+
       if (errorMessage) break;
     }
     if (errorMessage) {
@@ -88,34 +89,38 @@ function Validator(options) {
     };
     // kiểm tra từng rule và xử lý ( lắng nghe sự kiện blur, input,...)
     options.rules.forEach(function (rule) {
-      // lưu lại các rule cho mõi input
-      if (Array.isArray(selectorRules[rule.selector])) {
-        selectorRules[rule.selector].push(rule.test);
-      } else {
-        selectorRules[rule.selector] = [rule.test];
-      }
-      let inputElement = formElement.querySelector(rule.selector);
-      // gọi tới thẻ span của khung đang nhập liệu
-      let errorElement = getParent(
-        inputElement,
-        options.formGroupSelector,
-      ).querySelector(options.errorSelector);
-      // kiểm tra xem người dùng nhập đúnh không
-      let errorMessage = rule.test(inputElement.value);
-      // xử lý hiển thị nội dung lỗi lên thẻ span ở ngay dưới khung nhập liệu
-      if (inputElement) {
-        // xử lý khi người dùng blur khỏi khung nhập
-        inputElement.onblur = () => {
-          validate(inputElement, rule, errorElement, errorMessage);
-        };
-        //xử lý khi người dùng nhập input
-        inputElement.oninput = () => {
-          errorElement.innerText = "";
-          getParent(inputElement, options.formGroupSelector).classList.remove(
-            "invalid",
-          );
-        };
-      }
+      let inputElements = formElement.querySelectorAll(rule.selector);
+      Array.from(inputElements).forEach((inputElement) => {
+        // gọi tới thẻ span của khung đang nhập liệu
+        let errorElement = getParent(
+          inputElement,
+          options.formGroupSelector,
+        ).querySelector(options.errorSelector);
+
+        // lưu lại các rule cho mõi input
+        if (Array.isArray(selectorRules[rule.selector])) {
+          selectorRules[rule.selector].push(rule.test);
+        } else {
+          selectorRules[rule.selector] = [rule.test];
+        }
+        // kiểm tra xem người dùng nhập đúnh không
+        let errorMessage = rule.test(inputElement.value);
+
+        // xử lý hiển thị nội dung lỗi lên thẻ span ở ngay dưới khung nhập liệu
+        if (inputElement) {
+          // xử lý khi người dùng blur khỏi khung nhập
+          inputElement.onblur = () => {
+            validate(inputElement, rule, errorElement, errorMessage);
+          };
+          //xử lý khi người dùng nhập input
+          inputElement.oninput = () => {
+            errorElement.innerText = "";
+            getParent(inputElement, options.formGroupSelector).classList.remove(
+              "invalid",
+            );
+          };
+        }
+      });
     });
   }
 }
@@ -126,7 +131,7 @@ Validator.isRequired = function (selector, message = "") {
   return {
     selector: selector,
     test: function (value = "") {
-      return value.trim() ? undefined : message || "Vui lòng nhập trường này!!";
+      return value ? undefined : message || "Vui lòng nhập trường này!!";
     },
   };
 };
