@@ -78,11 +78,22 @@ function Validator(options) {
           let formValues = Array.from(enableInputs).reduce((values, input) => {
             switch (input.type) {
               case "radio":
-              case "checkbox":
                 values[input.name] = formElement.querySelector(
                   'input[name="' + input.name + '"]:checked',
                 ).value;
                 break;
+              case "checkbox":
+                if (!input.matches(":checked")) {
+                  values[input.name] = "";
+                  return values;
+                }
+                if (!Array.isArray(values[input.name])) {
+                  values[input.name] = [];
+                }
+                values[input.name].push(input.value);
+                break;
+              case "file":
+                values[input.name] = input.files;
               default:
                 values[input.name] = input.value;
                 break;
@@ -186,6 +197,7 @@ Validator({
     Validator.isRequired("#fullname", "Vui lòng nhập họ tên đầy đủ!!!"),
     Validator.isRequired("#email"),
     Validator.isEmail("#email"),
+    Validator.isRequired("#province"),
     Validator.isRequired("#password"),
     Validator.minLength("#password", 6),
     Validator.isRequired("#password_confirmation"),
