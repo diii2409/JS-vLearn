@@ -62,21 +62,32 @@ function Validator(options) {
       e.preventDefault();
       let isFormValid = true;
 
-      // kiểm tra tất cả các điều kiện xem có thõa mãn không
-      options.rules.forEach(function (rule) {
-        let inputElement = formElement.querySelector(rule.selector);
-        let isValid = validate(inputElement, rule);
-        if (isValid) {
-          isFormValid = false;
-        }
-      });
+      // // kiểm tra tất cả các điều kiện xem có thõa mãn không
+      // options.rules.forEach(function (rule) {
+      //   let inputElement = formElement.querySelector(rule.selector);
+      //   let isValid = validate(inputElement, rule);
+      //   if (isValid) {
+      //     isFormValid = false;
+      //   }
+      // });
 
       if (isFormValid) {
         // trường hợp submit với javascript
         if (typeof options.onsubmit === "function") {
           let enableInputs = formElement.querySelectorAll("[name]");
           let formValues = Array.from(enableInputs).reduce((values, input) => {
-            values[input.name] = input.value;
+            switch (input.type) {
+              case "radio":
+              case "checkbox":
+                values[input.name] = formElement.querySelector(
+                  'input[name="' + input.name + '"]:checked',
+                ).value;
+                break;
+              default:
+                values[input.name] = input.value;
+                break;
+            }
+
             return values;
           }, {});
           options.onsubmit({ formValues });
